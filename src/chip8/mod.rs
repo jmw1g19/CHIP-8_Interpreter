@@ -3,6 +3,8 @@ use bobbin_bits::*;
 use rand::Rng;
 
 /// The CHIP-8 interpreter itself. Encapsulates memory, registers, the screen, and keyboard.
+#[derive(Clone)]
+#[derive(Debug)]
 pub struct CPU{
     memory: [u8; 4096], // 4KB of addressable memory
     registers: [u8; 16], // 16 general-purpose registers, V0 through VF
@@ -16,6 +18,8 @@ pub struct CPU{
                                   // True indicates pixel should be lit, false indicates otherwise
     keyboard: [bool; 16], // 16 character keyboard, labelled 0 through F
                           // True indicates the character is being pressed, false indicates otherwise
+    saved_state: Box<Option<CPU>>, // A single save state is stored as well.
+                                   // To avoid infinite recursion, it is placed inside a Box
 }
 
 /// Default font for CHIP-8 games, loaded into memory at address 0x0.
@@ -53,6 +57,7 @@ impl CPU{
             stack: [0; 16],
             screen: [[false; 64]; 32],
             keyboard: [false; 16],
+            saved_state: Box::new(None),
         };
 
         new_cpu.memory[..0x50].copy_from_slice(&FONT);
@@ -144,8 +149,7 @@ impl CPU{
             (U4::B1111, _, U4::B0011, U4::B0011) => self.bcd_representation(digit2), // Fx33
             (U4::B1111, _, U4::B0101, U4::B0101) => self.copy_registers_to_memory(digit2), // Fx55
             (U4::B1111, _, U4::B0110, U4::B0101) => self.copy_memory_into_registers(digit2), // Fx65
-            (U4::B1111, U4::B1111, U4::B1111, U4::B1111) => println!("Reached end"), // FFFF (temporary debug instruction)
-            _ => println!("Error: illegal instruction {}{}", byte1, byte2),
+            _ => println!("Error: illegal instruction 0x{:x}{:x}!", byte1, byte2),
         };
     }
 
@@ -410,6 +414,35 @@ impl CPU{
     fn copy_memory_into_registers(&mut self, x: U4){
         for count in 0..(x as usize)+1{
             self.registers[count] = self.memory[self.i as usize + count];
+        }
+    }
+
+    /// Saves the current CPU state.
+    pub fn save_state(&mut self){
+        self.saved_state = Box::new(Some(self.clone()));
+    }
+
+    /// Loads the saved CPU state. Does nothing if no save state is present.
+    pub fn load_state(&mut self){
+        // Dereference saved state, clone it (cannot borrow reference due to lack of Copy trait)
+        let state = *(self.saved_state).clone();
+
+        // Update this instance of CPU is saved state persent
+        // Saved state is left unchanged, so it can be reloaded again
+        match state{
+            Some(saved_cpu) => { 
+                self.memory = saved_cpu.memory;
+                self.registers = saved_cpu.registers;
+                self.i = saved_cpu.i;
+                self.dt = saved_cpu.dt;
+                self.st = saved_cpu.st;
+                self.pc = saved_cpu.pc;
+                self.sp = saved_cpu.sp;
+                self.stack = saved_cpu.stack;
+                self.screen = saved_cpu.screen;
+                self.keyboard = saved_cpu.keyboard;
+            },
+            None => return,
         }
     }
 }

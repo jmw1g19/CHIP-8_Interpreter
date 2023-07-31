@@ -74,6 +74,10 @@ impl WindowsSDL2{
                     },
                     Event::KeyDown{ keycode: Some(Keycode::Plus), .. } => self.cycles_per_frame += 1,
                     Event::KeyDown{ keycode: Some(Keycode::Equals), .. } => self.cycles_per_frame += 1,
+                    // O and P save/load CPU state
+                    Event::KeyDown{ keycode: Some(Keycode::O), .. } => cpu.save_state(),
+                    Event::KeyDown{ keycode: Some(Keycode::P), .. } => cpu.load_state(),
+                    // Otherwise, other keys go to key handler
                     Event::KeyDown { keycode: Some(keycode), .. } => self.handle_key(cpu, keycode, true),
                     Event::KeyUp { keycode: Some(keycode), .. } => self.handle_key(cpu, keycode, false),
                     _ => { }
