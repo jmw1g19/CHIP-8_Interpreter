@@ -1,0 +1,13 @@
+[package]
+name = "chip8_interpreter"
+version = "1.0.0"
+edition = "2021"
+build = "build.rs"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bobbin-bits = "0.1.1"
+rand = "0.8.5"
+rfd = "0.11.4"
+sdl2 = "0.35"
